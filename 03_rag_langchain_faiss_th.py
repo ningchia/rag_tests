@@ -1,5 +1,11 @@
 import os
 import numpy as np
+
+# Langchain refs : 
+#   https://reference.langchain.com/python/langchain/
+#   https://docs.langchain.com/oss/python/integrations/providers/overview
+#   https://reference.langchain.com/python/integrations/
+#   https://docs.langchain.com/oss/python/integrations/vectorstores
 from langchain_openai import OpenAIEmbeddings
 from langchain_community.vectorstores import FAISS
 from langchain_text_splitters import RecursiveCharacterTextSplitter

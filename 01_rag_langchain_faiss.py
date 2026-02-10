@@ -3,6 +3,12 @@
 #   export OPENAI_API_KEY="your_api_key_here" (Linux)
 #   setx OPENAI_API_KEY "your_api_key_here" (Windows)
 import os
+
+# Langchain refs : 
+#   https://reference.langchain.com/python/langchain/
+#   https://docs.langchain.com/oss/python/integrations/providers/overview
+#   https://reference.langchain.com/python/integrations/
+#   https://docs.langchain.com/oss/python/integrations/vectorstores
 from langchain_openai import OpenAIEmbeddings, ChatOpenAI
 from langchain_community.vectorstores import FAISS
 from langchain_text_splitters import RecursiveCharacterTextSplitter
@@ -61,6 +67,9 @@ retriever = vector_db.as_retriever(search_kwargs={"k": 2}) # 撈出最相關的 
 # 先使用最便宜的gpt-4o-mini實驗就好.
 # API key 用environment variable引入, 不直接寫在程式碼中.
 llm = ChatOpenAI(model_name="gpt-4o-mini", temperature=0)
+# 這邊使用 RetrievalQA 這個現成的 chain 組件，來把檢索器和生成模型串在一起。
+# 將來建議改用 LCEL (LangChain Expression Language) 來自己寫一個更靈活的 RAG 流程。
+# ex. chain = prompt | llm | StrOutputParser() 這代表：生成 Prompt -> 丟給 LLM -> 將 LLM 的複雜物件直接轉成乾淨的「純字串」。
 qa_chain = RetrievalQA.from_chain_type(
     llm=llm,
     chain_type="stuff", # 將撈到的資料全部塞進 prompt
