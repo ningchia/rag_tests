@@ -27,7 +27,10 @@ llm = ChatOpenAI(model="gpt-4o-mini", temperature=0) # 作為 Re-ranker
 # 2. 建立資料庫函數
 def create_db(text, size, overlap):
     splitter = RecursiveCharacterTextSplitter(chunk_size=size, chunk_overlap=overlap)
-    docs = [Document(page_content=t) for t in splitter.split_text(text)]
+    chunks = splitter.split_text(raw_text)
+    docs = [
+        Document(page_content=t, metadata={"original_index": i}) for i, t in enumerate(chunks)
+    ]
     return FAISS.from_documents(docs, embeddings)
 
 db_small = create_db(raw_text, 100, 20)
@@ -73,7 +76,8 @@ def run_advanced_experiment(query, db, threshold=0.9):
     doc, score = results[0]
     
     # 取得 FAISS 內部向量資訊
-    doc_vector = db.index.reconstruct(0) 
+    real_index = doc.metadata["original_index"]
+    doc_vector = db.index.reconstruct(real_index) 
     
     print(f"\n--- 第一階段：向量檢索分析 ---")
     print(f"  - 信心分數 (L2 距離): {score:.4f}")

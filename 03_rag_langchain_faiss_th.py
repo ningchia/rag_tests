@@ -26,7 +26,10 @@ embeddings = OpenAIEmbeddings(model="text-embedding-3-small")
 # 2. 測試不同分段大小 (Improvement 2)
 def create_db(text, size, overlap):
     splitter = RecursiveCharacterTextSplitter(chunk_size=size, chunk_overlap=overlap)
-    docs = [Document(page_content=t) for t in splitter.split_text(text)]
+    chunks = splitter.split_text(raw_text)
+    docs = [
+        Document(page_content=t, metadata={"original_index": i}) for i, t in enumerate(chunks)
+    ]
     return FAISS.from_documents(docs, embeddings)
 
 db_small = create_db(raw_text, 100, 20)  # 精細分段
@@ -50,10 +53,9 @@ def run_experiment(query, db, threshold=0.9):
     doc, score = results[0]
     
     # 取得該片段在 FAISS 中的向量與 Index
-    # 我們透過內部 docstore_id 來反查 index
-    doc_id = list(db.docstore._dict.keys())[0] # 簡化示範，取搜尋到的 ID
-    # 這裡直接從向量索引中重建向量 (需注意 FAISS 內部的 ID 管理)
-    doc_vector = db.index.reconstruct(0) # 示範重建第一個 index 的向量
+    ## 從 Metadata 拿到我們埋進去的「docstore index」
+    real_index = doc.metadata["original_index"]
+    doc_vector = db.index.reconstruct(real_index) # 示範重建該 chunk 的向量
     
     print(f"\n檢索結果分析:")
     print(f"  - 信心分數 (L2 距離): {score:.4f}")

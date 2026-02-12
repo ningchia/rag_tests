@@ -28,7 +28,10 @@ llm = ChatOpenAI(model="gpt-4o-mini", temperature=0)
 # 2. 建立資料庫
 def create_db(text, size, overlap):
     splitter = RecursiveCharacterTextSplitter(chunk_size=size, chunk_overlap=overlap)
-    docs = [Document(page_content=t) for t in splitter.split_text(text)]
+    chunks = splitter.split_text(raw_text)
+    docs = [
+        Document(page_content=t, metadata={"original_index": i}) for i, t in enumerate(chunks)
+    ]
     return FAISS.from_documents(docs, embeddings)
 
 db_small = create_db(raw_text, 100, 20)
@@ -96,6 +99,11 @@ run_experiment_v2("入職半年的補助是多少？", db_small, threshold=0.9)
 run_experiment_v2("公司的咖啡機怎麼用？", db_small, threshold=0.9)
 
 # 進階用法：在 LLM 回答後，根據回答的長度或內容，再決定是否要進行「二次擴充提問」。
+#
+# 在 RAG 實務中，可以用這個技巧來實現更多, 例如：
+#   Self-Correction (自我修正)：如果 LLM 回答說「我不知道」，你可以判斷這個字眼，然後自動更換另一個檢索器（或是擴大搜尋範圍）再試一次。
+#   安全性檢查：判斷回答中是否包含敏感字眼，如果有，則自動替換為罐頭回覆。
+#   格式轉換：如果偵測到使用者需要圖表，自動將文字轉為 Markdown 表格格式。
 '''
 from langchain_core.runnables import RunnableLambda, RunnablePassthrough
 

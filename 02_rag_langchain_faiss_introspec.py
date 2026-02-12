@@ -22,7 +22,15 @@ raw_text = """
 
 # 2. 分段
 text_splitter = RecursiveCharacterTextSplitter(chunk_size=100, chunk_overlap=20)
-docs = [Document(page_content=t) for t in text_splitter.split_text(raw_text)]
+chunks = text_splitter.split_text(raw_text)
+
+# 將 page(chunk)對應的向量在 FAISS 裡的 index 儲存在 metadata裡，方便後續使用vector_db.index.reconstruct()取回該向量。
+# 由於vector_db.similarity_search_with_score()會傳回document物件, 裡頭會有page(或叫做chunk)的內容, 不用擔心拿不到原始chunk內容, 
+# 所以我們下面這程式碼中, 建立metadata時, 重點在存入FAISS的 index (int) 而不是docstore裡對應該向量的chunk的ID(或是index), 
+# 但是其實他們兩者的ID(index)是相同的, 因為我們的FAISS與docstore都是從零開始建立。
+docs = [
+    Document(page_content=t, metadata={"original_index": i}) for i, t in enumerate(chunks)
+]
 
 # 3. 建立向量資料庫 (明確指定模型)
 embeddings = OpenAIEmbeddings(model="text-embedding-3-small")
@@ -47,17 +55,37 @@ print(f"向量前兩維: {query_vector[:2]} ... 末兩維: {query_vector[-2:]}\n
 # L2 距離 > 1.0：基本上就是「沒關聯」或是「負樣本」。
 results_with_score = vector_db.similarity_search_with_score(query, k=2)
 
+# 這邊的 FAISS 是 Langchain 封裝的版本，內部會維護一個 docstore 來對應原始文字與 FAISS 的向量索引。
+# FAISS 本身只存向量座標，不存原始文字。因此 LangChain 在內部維護了一個 docstore（通常是個字典）來對應文字內容。
+# 
+# vector_db.index_to_docstore_id：
+#   一個映射表（Mapping），Key 是 FAISS 內部的整數索引（0, 1, 2...），Value 是 docstore 裡chunk的 UUID（唯一識別碼,不是index）。
+# vector_db.index.reconstruct(i) :
+#   vector_db.index 是底層的 FAISS 索引物件，reconstruct 方法會根據FAISS內部索引位置 i 來將儲存在壓縮
+#   或優化後的索引裡的向量座標「還原」出來。
+#   回傳值：一個 Numpy Array，維度與當初使用的 Embedding 模型一致（如 1536 維）。  
+# vector_db.docstore._dict.keys()：
+#   這是直接存取 docstore 所有的 ID 列表。
+#
+# 方法/屬性	                 需要的參數 (Input)	      給出的結果 (Output)	  作用層次
+# index_to_docstore_id[n]	FAISS 物理編號 (int)	UUID (string)	       中間層 (Mapping)
+# index.reconstruct(n)	    FAISS 物理編號 (int)	原始向量 (list/array)	底層 (C++)
+# docstore.search(uuid)	    UUID (string)	       Document 物件	      內容層 (Storage)
+
 print(f"=== [檢索結果 (Top 2)] ===")
 for i, (doc, score) in enumerate(results_with_score):
-    # 取得該 doc 在 FAISS 內部的 index
-    # 在 LangChain 的 FAISS 實作中，doc 的 metadata 或內部的 docstore_id 可與 index 對應
-    # 這裡我們直接從 FAISS 索引中提取該向量來顯示
-    doc_id = vector_db.index_to_docstore_id[i] # 簡易獲取方式
+    # doc: Document 物件包含原文（page_content）與元數據（metadata）.
     
+    # 注意：這裡的 i 是搜尋結果的排名 (0, 1)，並非資料庫的原始 index.
+    #      嚴謹做法應透過 docstore_id 取得正確的原始向量
+
+    # 從 Metadata 拿到我們埋進去的「docstore index」
+    real_index = doc.metadata["original_index"]
+
     # 獲取該 chunk 的原始向量 (從底層 FAISS 指標重建)
     # 註：FAISS index 儲存的順序可能與搜尋結果順序不同，搜尋結果是按 score 排序
     # 我們需要透過檢索到的內容去比對向量
-    doc_vector = vector_db.index.reconstruct(i) 
+    doc_vector = vector_db.index.reconstruct(real_index) 
 
     print(f"排名 {i+1}:")
     print(f"  - 信心分數 (L2 距離): {score:.4f}")
