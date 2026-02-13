@@ -1,7 +1,7 @@
 # 需要安裝之package : pip install langchain langchain-openai langchain-community faiss-cpu
 # 使用 OpenAI 的 Embedding 服務，會需要設定環境變數 OPENAI_API_KEY，或是直接在程式碼中指定 API Key (不建議，因為安全性問題)
 #   export OPENAI_API_KEY="your_api_key_here" (Linux)
-#   setx OPENAI_API_KEY "your_api_key_here" (Windows)
+#   set OPENAI_API_KEY "your_api_key_here" (Windows)
 import os
 
 # Langchain refs : 
