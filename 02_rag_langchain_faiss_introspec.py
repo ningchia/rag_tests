@@ -29,6 +29,19 @@ chunks = text_splitter.split_text(raw_text)
 # 所以我們下面這程式碼中, 建立metadata時, 重點在存入FAISS的 index (int) 而不是docstore裡對應該向量的chunk的ID(或是index), 
 # 但是其實他們兩者的ID(index)是相同的, 因為我們的FAISS與docstore都是從零開始建立。
 docs = [
+    # 在 Python 中，只要是在 括號 []、花括號 {} 或圓括號 () 內部，你都可以隨意換行，不需要加任何特殊符號（如 \）。
+    # 所以下面這一行可以變成: (相同縮排)
+    #    Document(page_content=t, metadata={"original_index": i}) 
+    #    for i, t in enumerate(chunks)
+    # 甚至是:
+    #    Document(
+    #        page_content=text, 
+    #        metadata={
+    #            "original_index": i,
+    #            ...
+    #        }
+    #    ) 
+    #    for i, text in enumerate(raw_chunks)
     Document(page_content=t, metadata={"original_index": i}) for i, t in enumerate(chunks)
 ]
 
