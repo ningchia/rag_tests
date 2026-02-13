@@ -32,9 +32,11 @@ chunk_vectors = [vector_db.index.reconstruct(i) for i in range(len(raw_chunks))]
 # 3. PCA 降維 (1536 -> 2)
 all_vectors = np.vstack([chunk_vectors, query_vectors])
 pca = PCA(n_components=2)
+# 進行PCA轉換，得到每個向量在2D空間中的座標
 coords = pca.fit_transform(all_vectors)
 
-# 4. 整理成 DataFrame (Plotly 繪圖最方便的格式)
+# 4. 用Pandas來將所有資料整理成 DataFrame (Plotly 繪圖最方便的格式). 就想成做一張excel的sheet一樣的意思 
+# (事實上是一個表格, 每一行是一個資料點, 每一列是一個屬性, 這樣Plotly就可以很方便地根據屬性來繪圖和互動)
 df = pd.DataFrame({
     "x": coords[:, 0],
     "y": coords[:, 1],
@@ -43,7 +45,7 @@ df = pd.DataFrame({
     "編號": [f"Index {i}" for i in range(len(raw_chunks))] + ["Query"] * len(queries)
 })
 
-# 5. 繪製互動圖表
+# 5. 根據Pandas Dataframe繪製互動圖表
 fig = px.scatter(
     df, x="x", y="y", 
     color="類型", 

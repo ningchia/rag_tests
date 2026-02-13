@@ -47,6 +47,38 @@ docs = [
 
 # 3. 建立向量資料庫 (明確指定模型)
 embeddings = OpenAIEmbeddings(model="text-embedding-3-small")
+
+# 這邊的 FAISS 是 Langchain 封裝的版本，內部會維護一個 docstore 來對應原始文字與 FAISS 的向量索引。
+# FAISS 本身只存向量座標，不存原始文字。看起來像是這樣的結構:
+# FAISS = {
+#    compressed_vector0,    # FAISS index 0, embedding of "內容A", 需要用 reconstruct(0) 還原
+#    compressed_vector1,    # FAISS index 1, embedding of "內容B", 需要用 reconstruct(1) 還原
+#    ...
+# }
+# 因此 LangChain 在內部維護了一個 docstore（通常是個字典）來儲存原始文字內容與metadata, 看起來像是這樣的結構:
+# docstore = {
+#    --- UUID ----  ---- Document object --------------------------------------
+#    "8e51156d...": Document(page_content="內容A", metadata={"source": "A"}),
+#    "f47ac10b...": Document(page_content="內容B", metadata={"source": "B"})
+# }
+# 還有一個映射表 index_to_docstore_id 來對應 FAISS 的向量索引與 docstore 的 UUID。看起來像是這樣的結構:
+# index_to_docstore_id = {
+#    0: "8e51156d...",  # FAISS index 0 -> uuid_A
+#    1: "f47ac10b..."   # FAISS index 1 -> uuid_B
+#}
+#
+# 執行 FAISS.from_documents() 時發生的事:
+#   Step 1: 產生 UUID. LangChain 為每個 Document 片段自動生成一個隨機 UUID（如果你沒給的話）。
+#   Step 2: 處理向量 (FAISS 內部). LangChain 計算 page_content 的 Embedding。然後將這些向量丟進 FAISS 引擎。
+#           FAISS 引擎內部並不存 UUID。它只會按照存入順序給一個整數編號（0, 1, 2...）。
+#   Step 3: 建立映射表 (The Glue). LangChain 內部維護了一個字典叫做 index_to_docstore_id。
+#           它記錄著：{0: "uuid_A", 1: "uuid_B"}。
+#   Step 4: 存入 Docstore. 將 {"uuid_A": Document物件} 存入 docstore。
+# 
+# 當呼叫 similarity_search_with_score() 時：
+#   FAISS 引擎說： 「跟query最像的是第 N 號向量。」
+#   LangChain 查表： 翻開 index_to_docstore_id，看到第 N 號對應的 UUID 是 "uuid_N"。
+#   Docstore 抓取： 叫用 docstore.search(uuid) 來根據 "uuid_N" 去 docstore 把那個包裹了原始文字和元數據的 Document 物件撈出來。
 vector_db = FAISS.from_documents(docs, embeddings)
 
 # --- 實驗開始 ---
@@ -68,17 +100,13 @@ print(f"向量前兩維: {query_vector[:2]} ... 末兩維: {query_vector[-2:]}\n
 # L2 距離 > 1.0：基本上就是「沒關聯」或是「負樣本」。
 results_with_score = vector_db.similarity_search_with_score(query, k=2)
 
-# 這邊的 FAISS 是 Langchain 封裝的版本，內部會維護一個 docstore 來對應原始文字與 FAISS 的向量索引。
-# FAISS 本身只存向量座標，不存原始文字。因此 LangChain 在內部維護了一個 docstore（通常是個字典）來對應文字內容。
-# 
 # vector_db.index_to_docstore_id：
 #   一個映射表（Mapping），Key 是 FAISS 內部的整數索引（0, 1, 2...），Value 是 docstore 裡chunk的 UUID（唯一識別碼,不是index）。
 # vector_db.index.reconstruct(i) :
-#   vector_db.index 是底層的 FAISS 索引物件，reconstruct 方法會根據FAISS內部索引位置 i 來將儲存在壓縮
-#   或優化後的索引裡的向量座標「還原」出來。
+#   vector_db.index 是底層的 FAISS 索引物件，reconstruct 方法會根據"FAISS內部索引位置 i" 來將儲存在壓縮後的向量座標「還原」出來。
 #   回傳值：一個 Numpy Array，維度與當初使用的 Embedding 模型一致（如 1536 維）。  
 # vector_db.docstore._dict.keys()：
-#   這是直接存取 docstore 所有的 ID 列表。
+#   這是直接存取 docstore 所有的 UUID 列表。
 #
 # 方法/屬性	                 需要的參數 (Input)	      給出的結果 (Output)	  作用層次
 # index_to_docstore_id[n]	FAISS 物理編號 (int)	UUID (string)	       中間層 (Mapping)
