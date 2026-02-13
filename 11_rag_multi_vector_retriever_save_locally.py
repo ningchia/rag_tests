@@ -11,7 +11,7 @@ from langchain_classic.retrievers import MultiVectorRetriever
 from langchain_classic.storage import LocalFileStore
 
 # 0. 定義儲存路徑
-VECTOR_DB_PATH = "faiss_index_save"
+VECTOR_DB_PATH = "./faiss_index_save"
 BYTE_STORE_PATH = "./parent_doc_storage_save"
 
 # 1. 準備原始長文本
@@ -44,11 +44,30 @@ summary_chain = (
     | StrOutputParser()
 )
 
-question_chain = (
-    ChatPromptTemplate.from_template("針對內容生成 3 個簡短問題，以 Python 的 字串 list 格式回傳：\n\n{doc}")
-    | ChatOpenAI(model="gpt-4o-mini", temperature=0)
-    | StrOutputParser()
+# 當要求 LLM 回傳 Python 列表時，它往往會順手加上 Markdown 的程式碼區塊標記（如 ```python ... ```）
+# 或是前言後記。這會導致 Python 的 eval() 函數解析失敗.
+# -------------------------------------------------------------
+# 方法 :  改用 JsonOutputParser. 我們不再求 LLM 給 Python List，而是要求它給 JSON Array。
+# LangChain 的 JsonOutputParser 會自動幫忙處理掉那些煩人的 Markdown 標籤。
+from langchain_core.output_parsers import JsonOutputParser
+
+# 1. 初始化 Parser
+parser = JsonOutputParser()
+
+# 2. 修改 Prompt 與 Chain
+question_prompt = ChatPromptTemplate.from_template(
+    "請針對以下內容，生成 3 個使用者可能會問的簡短問題。\n"
+    "{format_instructions}\n"
+    "內容：{doc}"
 )
+
+# 將 Parser 的指令注入 Prompt，這會告訴 LLM 必須回傳 JSON
+question_chain = (
+    question_prompt 
+    | ChatOpenAI(model="gpt-4o-mini", temperature=0) 
+    | parser
+)
+# -------------------------------------------------------------
 
 # 4. 處理與存入
 for doc in parent_docs:
@@ -61,8 +80,17 @@ for doc in parent_docs:
 
     # 策略 B: 假設性問題
     print(f"正在生成假設性問題...")
-    questions_raw = question_chain.invoke({"doc": doc.page_content})
-    questions = eval(questions_raw) 
+    # ------------------------------------------------------------------
+    # 用JsonOutputParser確保輸出是乾淨的, 直接就是python的字串list，不需要 eval.
+    # 由parser.get_format_instructions()提供給LLM格式指令.
+    questions = question_chain.invoke({
+        "doc": doc.page_content,
+        "format_instructions": parser.get_format_instructions()
+    })
+    # questions 現在直接就是 ['問題1', '問題2', '問題3']. 
+    # 回傳的就是真正的 list 了，不需要 eval() 來解析了。這樣就不會有 Markdown 標記干擾了。
+    # ------------------------------------------------------------------
+
     question_docs = [Document(page_content=q, metadata={uuid_key_name: unique_uuid}) for q in questions]
     
     # 存入向量與原始內容

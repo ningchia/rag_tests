@@ -4,7 +4,7 @@ from langchain_classic.retrievers import MultiVectorRetriever
 from langchain_classic.storage import LocalFileStore
 
 # 1. 初始化路徑與模型
-VECTOR_DB_PATH = "faiss_index_save"
+VECTOR_DB_PATH = "./faiss_index_save"
 BYTE_STORE_PATH = "./parent_doc_storage_save"
 embeddings = OpenAIEmbeddings(model="text-embedding-3-small")
 

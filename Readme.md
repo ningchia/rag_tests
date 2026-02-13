@@ -19,7 +19,7 @@ $env:OPENAI_API_KEY="你的_API_Key"
 
 **Windows (CMD)**
 ```cmd
-set OPENAI_API_KEY=你的_API_Key
+set OPENAI_API_KEY "你的_API_Key"
 ```
 
 **Windows (永久設定，PowerShell)**
@@ -51,10 +51,6 @@ pip install -U langchain langchain-openai langchain-community langchain-core lan
 pip install faiss-cpu pandas numpy scikit-learn
 
 # 互動式繪圖工具
-pip install plotly
-```
-**或使用 requirements.txt 一次安裝所有套件**
-```bash
-pip install -r requirements.txt
+pip install matplotlib plotly
 ```
 
