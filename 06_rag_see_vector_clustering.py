@@ -1,7 +1,13 @@
 # Need install matplotlib and scikit-learn more.
 
 import numpy as np
+
+import matplotlib
+matplotlib.use('TkAgg') # 必須在 import pyplot 之前執行
+#matplotlib.use('WebAgg') # 必須在 import pyplot 之前執行
+
 import matplotlib.pyplot as plt
+
 from sklearn.decomposition import PCA
 from langchain_openai import OpenAIEmbeddings
 from langchain_community.vectorstores import FAISS
@@ -56,7 +62,8 @@ plt.figure(figsize=(12, 8))
 # 解決中文顯示問題
 # 有可能 Ubuntu/WSL 裡面根本沒裝中文字體. 使用 apt 安裝 fonts-noto-cjk 或 fonts-wqy-microhei 就可以了.
 # WSL 有時候雖然安裝了字體，但 Matplotlib 的字體快取（Cache）沒更新，會導致它說找不到。
-# 如果安裝了還是不行，請執行 import shutil; shutil.rmtree(matplotlib.get_cachedir()). 通常是不用的.
+# 如果安裝了還是不行，請執行 import shutil; shutil.rmtree(matplotlib.get_cachedir()).
+# 或是 直接刪除 ~/.cache/matplotlib 這個資料夾, 讓 Matplotlib 在下次執行時重新生成快取。
 # 定義字體優先順序清單:
 font_list = [
     'Microsoft YaHei',      # Windows 11
@@ -66,8 +73,9 @@ font_list = [
     'SimHei',               # 萬用黑體 (許多 Linux 伺服器會裝)
     'sans-serif'            # 最後的防線
 ]
-plt.rcParams['font.sans-serif'] = font_list
-plt.rcParams['axes.unicode_minus'] = False      # 解決座標軸負號顯示為方塊的問題 (這行通常也要加)
+plt.rcParams['font.sans-serif'] = font_list    # 這行在某些環境下可能不太管用，因為它是設定「sans-serif」這個字體族群的優先順序，但如果系統沒有正確識別或安裝這些字體，可能還是會出問題。
+# plt.rcParams['font.serif'] = font_list       # 如果你想讓它也在 serif 字體族群裡找中文，這行也可以加上，但通常中文會放在 sans-serif 裡比較常見。
+plt.rcParams['axes.unicode_minus'] = False     # 解決座標軸負號顯示為方塊的問題 (這行通常也要加)
 
 # 畫出 DB Chunks
 plt.scatter(reduced_vectors[:4, 0], reduced_vectors[:4, 1], c='blue', label='DB Chunks', s=150, alpha=0.6)
