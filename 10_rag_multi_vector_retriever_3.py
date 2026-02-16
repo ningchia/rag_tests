@@ -156,10 +156,10 @@ df["y"] = coords[:, 1]
 
 # 5. Plotly 繪圖
 fig = px.scatter(
-    df, x="x", y="y",
-    color="類型",
-    symbol="類型",
-    text="標籤",
+    df, x="x", y="y",      # 資料來源 (DataFrame), 指定 X, Y 軸要對應哪一個欄位
+    color="類型",           # 點的顏色根據「類型」欄位區分 (摘要、假設性問題、查詢)
+    symbol="類型",          # 點的形狀也根據「類型」區分，讓查詢點更突出
+    text="標籤",            # 點上顯示標籤 (Child 0, Child 1, ..., Query)，方便識別
     hover_data=["內容", "來源原文"], # 滑鼠移上去能看到小標籤與它對應的原文
     title="Multi-Vector RAG 語意映射圖 (摘要 + 假設問題 + 查詢)",
     template="plotly_white",

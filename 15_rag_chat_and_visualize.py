@@ -175,14 +175,13 @@ def main():
             df[key] = [m[key] for m in metadata_list]
 
         fig = px.scatter(
-            df, x='x', y='y', color='Type', 
-            # 關鍵：在 hover_data 中加入所有想顯示的資訊
-            hover_data={
-                'x': False, 'y': False, # 隱藏座標數值
-                'Type': True,
-                'Source_File': True,
-                'Child_Content': True,
-                'Parent_Preview': True
+            df, x='x', y='y', color='Type',     # 根據類型上色
+            hover_data={                        # 在 hover_data 中加入所有想顯示的資訊
+                'x': False, 'y': False,         # 隱藏座標數值
+                'Type': True,                   # 顯示類型
+                'Source_File': True,            # 顯示來源檔案
+                'Child_Content': True,          # 顯示子向量內容預覽
+                'Parent_Preview': True          # 顯示父向量內容預覽
             },
             title="RAG 向量空間視覺化 (帶溯源資訊)",
             template="plotly_white"
