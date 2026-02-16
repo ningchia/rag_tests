@@ -4,6 +4,6 @@
 # Except Python files
 !*.py
 !*.md
-!requirements.txt
+!*.txt
 !.gitignore
 
